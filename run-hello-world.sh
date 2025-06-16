@@ -1,0 +1,1 @@
+opt-19 -load-pass-plugin ./libHelloWorld.so -passes=hello-world -disable-output inputs/input_for_hello.ll

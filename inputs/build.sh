@@ -1,0 +1,1 @@
+clang-19 -O1 -S -emit-llvm $1.c -o $1.ll
