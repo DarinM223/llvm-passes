@@ -14,3 +14,4 @@ if (NOT LLVM_ENABLE_RTTI)
 endif()
 
 add_library(HelloWorld SHARED HelloWorld.cpp)
+add_library(OpcodeCounter SHARED OpcodeCounter.cpp)
