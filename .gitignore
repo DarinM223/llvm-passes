@@ -3,3 +3,4 @@ CMakeFiles/
 Makefile
 *.cmake
 *.so
+*.bc
