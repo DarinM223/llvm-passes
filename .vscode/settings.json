@@ -1,0 +1,8 @@
+{
+  "files.associations": {
+    "mutex": "cpp",
+    "ostream": "cpp",
+    "stop_token": "cpp",
+    "typeinfo": "cpp"
+  }
+}

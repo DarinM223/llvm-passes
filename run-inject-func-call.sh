@@ -1,0 +1,1 @@
+opt-19 -load-pass-plugin ./libInjectFuncCall.so -passes=injectfunccall inputs/input_for_hello.bc -o instrumented.bin
