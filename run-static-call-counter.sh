@@ -1,0 +1,1 @@
+opt-19 -load-pass-plugin ./libStaticCallCounter.so -passes=static-call-counter -disable-output inputs/input_for_cc.bc
