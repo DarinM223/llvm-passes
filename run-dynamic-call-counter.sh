@@ -1,0 +1,1 @@
+opt-19 -load-pass-plugin ./libDynamicCallCounter.so -passes=dynamic-call-counter inputs/input_for_cc.bc -o instrumented.bin
