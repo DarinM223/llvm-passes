@@ -1,0 +1,1 @@
+opt-19 -load-pass-plugin ./libMBASub.so -passes=mba-sub -S inputs/input_for_mba_sub.ll -o out.ll
