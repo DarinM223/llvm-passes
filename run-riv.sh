@@ -1,0 +1,1 @@
+opt-19 -load-pass-plugin ./libRIV.so -passes="riv" -disable-output inputs/input_for_riv.ll
