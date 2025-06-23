@@ -23,5 +23,7 @@ add_library(MBASub SHARED MBASub.cpp)
 add_library(MBAAdd SHARED MBAAdd.cpp)
 add_library(RIV SHARED RIV.cpp)
 add_library(DuplicateBB SHARED DuplicateBB.cpp)
+add_library(MergeBB SHARED MergeBB.cpp)
 
 target_compile_features(DuplicateBB PUBLIC cxx_std_20)
+target_compile_features(MergeBB PUBLIC cxx_std_20)

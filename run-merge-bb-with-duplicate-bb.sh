@@ -1,0 +1,1 @@
+opt-19 -load-pass-plugin ./libRIV.so -load-pass-plugin ./libMergeBB.so -load-pass-plugin ./libDuplicateBB.so -passes=duplicate-bb,merge-bb -S inputs/input_for_duplicate_bb.ll -o out.ll

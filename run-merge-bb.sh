@@ -1,0 +1,1 @@
+opt-19 -load-pass-plugin ./libMergeBB.so -passes=merge-bb -S inputs/foo.ll -o out.ll
