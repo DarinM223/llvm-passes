@@ -1,0 +1,1 @@
+opt-19 -load-pass-plugin ./libFindFCmpEq.so -passes=find-fcmp-eq -S inputs/input_for_fcmp_eq.ll -o out.ll
