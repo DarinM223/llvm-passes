@@ -25,6 +25,7 @@ add_library(RIV SHARED RIV.cpp)
 add_library(DuplicateBB SHARED DuplicateBB.cpp)
 add_library(MergeBB SHARED MergeBB.cpp)
 add_library(FindFCmpEq SHARED FindFCmpEq.cpp)
+add_library(ConvertFCmpEq SHARED ConvertFCmpEq.cpp)
 
 target_compile_features(DuplicateBB PUBLIC cxx_std_20)
 target_compile_features(MergeBB PUBLIC cxx_std_20)
