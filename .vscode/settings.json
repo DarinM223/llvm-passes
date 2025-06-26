@@ -4,6 +4,7 @@
     "ostream": "cpp",
     "stop_token": "cpp",
     "typeinfo": "cpp",
-    "*.def": "cpp"
+    "*.def": "cpp",
+    "iosfwd": "cpp"
   }
 }
