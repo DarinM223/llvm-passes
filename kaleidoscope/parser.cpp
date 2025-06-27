@@ -96,3 +96,96 @@ std::unique_ptr<ExprAST> Parser::parseBinOpRHS(int prec,
   }
   assert(0 && "parseBinOpRHS: cannot reach here");
 }
+
+std::unique_ptr<PrototypeAST> Parser::parsePrototype() {
+  if (static_cast<Token>(currentToken_) != Token::Identifier) {
+    throw ParserException("Expected function name in prototype");
+  }
+  std::string fnName(lexer_.getIdentifier());
+  getNextToken();
+  if (currentToken_ != '(') {
+    throw ParserException("Expected '(' in prototype");
+  }
+
+  std::vector<std::string> argNames;
+  while (static_cast<Token>(getNextToken()) == Token::Identifier) {
+    argNames.emplace_back(lexer_.getIdentifier());
+  }
+  if (currentToken_ != ')') {
+    throw ParserException("Expected ')' in prototype");
+  }
+  getNextToken();
+
+  return std::make_unique<PrototypeAST>(fnName, std::move(argNames));
+}
+
+std::unique_ptr<FunctionAST> Parser::parseDefinition() {
+  getNextToken();
+  auto proto = parsePrototype();
+  auto expr = parseExpression();
+  return std::make_unique<FunctionAST>(std::move(proto), std::move(expr));
+}
+
+std::unique_ptr<FunctionAST> Parser::parseTopLevelExpr() {
+  auto expr = parseExpression();
+  auto proto =
+      std::make_unique<PrototypeAST>("__anon_expr", std::vector<std::string>());
+  return std::make_unique<FunctionAST>(std::move(proto), std::move(expr));
+}
+
+std::unique_ptr<PrototypeAST> Parser::parseExtern() {
+  getNextToken();
+  return parsePrototype();
+}
+
+void Driver::handleDefinition() {
+  try {
+    parser_.parseDefinition();
+    out_ << "Parsed a function definition\n";
+  } catch (ParserException e) {
+    out_ << "Error: " << e.what() << "\n";
+    parser_.getNextToken();
+  }
+}
+
+void Driver::handleExtern() {
+  try {
+    parser_.parseExtern();
+    out_ << "Parsed an extern\n";
+  } catch (ParserException e) {
+    out_ << "Error: " << e.what() << "\n";
+    parser_.getNextToken();
+  }
+}
+
+void Driver::handleTopLevelExpression() {
+  try {
+    parser_.parseTopLevelExpr();
+    out_ << "Parsed a top-level expr\n";
+  } catch (ParserException e) {
+    out_ << "Error: " << e.what() << "\n";
+    parser_.getNextToken();
+  }
+}
+
+void Driver::mainLoop() {
+  while (true) {
+    out_ << "ready> ";
+    switch (parser_.getCurrentToken()) {
+    case Token::Eof:
+      return;
+    case static_cast<Token>(';'):
+      parser_.getNextToken();
+      break;
+    case Token::Def:
+      handleDefinition();
+      break;
+    case Token::Extern:
+      handleExtern();
+      break;
+    default:
+      handleTopLevelExpression();
+      break;
+    }
+  }
+}

@@ -11,5 +11,9 @@ int main() {
   binopPrecedence['*'] = 40;
   Lexer lexer(std::cin);
   Parser parser(lexer, std::move(binopPrecedence));
-  std::cout << "Hello world!" << std::endl;
+  Driver driver(std::cout, parser);
+
+  parser.getNextToken();
+  driver.mainLoop();
+  return 0;
 }

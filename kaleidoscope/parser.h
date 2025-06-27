@@ -3,6 +3,7 @@
 
 #include "ast.h"
 #include "lexer.h"
+#include <iostream>
 #include <unordered_map>
 
 class Parser {
@@ -13,6 +14,7 @@ class Parser {
 public:
   Parser(Lexer &lexer, std::unordered_map<char, int> binopPrecedence)
       : lexer_(lexer), binopPrecedence_(std::move(binopPrecedence)) {}
+  Token getCurrentToken() { return static_cast<Token>(currentToken_); }
   int getNextToken() {
     return currentToken_ = static_cast<int>(lexer_.getTok());
   }
@@ -24,6 +26,22 @@ public:
   std::unique_ptr<ExprAST> parseExpression();
   std::unique_ptr<ExprAST> parseBinOpRHS(int prec,
                                          std::unique_ptr<ExprAST> lhs);
+  std::unique_ptr<PrototypeAST> parsePrototype();
+  std::unique_ptr<FunctionAST> parseDefinition();
+  std::unique_ptr<FunctionAST> parseTopLevelExpr();
+  std::unique_ptr<PrototypeAST> parseExtern();
+};
+
+class Driver {
+  std::ostream &out_;
+  Parser &parser_;
+
+public:
+  Driver(std::ostream &out, Parser &parser) : out_(out), parser_(parser) {}
+  void handleDefinition();
+  void handleExtern();
+  void handleTopLevelExpression();
+  void mainLoop();
 };
 
 class ParserException : public std::exception {
