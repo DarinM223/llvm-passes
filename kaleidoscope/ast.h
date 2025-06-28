@@ -1,13 +1,17 @@
 #ifndef AST_H
 #define AST_H
 
+#include "llvm/IR/Value.h"
 #include <memory>
 #include <string>
 #include <vector>
 
+void initializeModule();
+
 class ExprAST {
 public:
   virtual ~ExprAST() = default;
+  virtual llvm::Value *codegen() = 0;
 };
 
 class NumberExprAST : public ExprAST {
@@ -15,6 +19,7 @@ class NumberExprAST : public ExprAST {
 
 public:
   NumberExprAST(double val) : val_(val) {}
+  llvm::Value *codegen() override;
 };
 
 class VariableExprAST : public ExprAST {
@@ -22,6 +27,7 @@ class VariableExprAST : public ExprAST {
 
 public:
   VariableExprAST(const std::string &name) : name_(name) {}
+  llvm::Value *codegen() override;
 };
 
 class BinaryExprAST : public ExprAST {
@@ -32,6 +38,7 @@ public:
   BinaryExprAST(char op, std::unique_ptr<ExprAST> lhs,
                 std::unique_ptr<ExprAST> rhs)
       : op_(op), lhs_(std::move(lhs)), rhs_(std::move(rhs)) {}
+  llvm::Value *codegen() override;
 };
 
 class CallExprAST : public ExprAST {
@@ -42,6 +49,7 @@ public:
   CallExprAST(const std::string &callee,
               std::vector<std::unique_ptr<ExprAST>> args)
       : callee_(callee), args_(std::move(args)) {}
+  llvm::Value *codegen() override;
 };
 
 class PrototypeAST {
@@ -53,6 +61,7 @@ public:
       : name_(name), args_(std::move(args)) {}
 
   const std::string &getName() const noexcept { return name_; }
+  llvm::Function *codegen();
 };
 
 class FunctionAST {
@@ -63,6 +72,15 @@ public:
   FunctionAST(std::unique_ptr<PrototypeAST> prototype,
               std::unique_ptr<ExprAST> body)
       : prototype_(std::move(prototype)), body_(std::move(body)) {}
+  llvm::Function *codegen();
+};
+
+class CodegenException : public std::exception {
+  std::string reason_;
+
+public:
+  CodegenException(const std::string &reason) : reason_(reason) {}
+  virtual const char *what() const throw() { return reason_.c_str(); }
 };
 
 #endif

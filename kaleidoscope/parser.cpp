@@ -1,4 +1,6 @@
 #include "parser.h"
+#include "llvm/IR/Function.h"
+#include "llvm/Support/raw_os_ostream.h"
 #include <cassert>
 
 std::unique_ptr<ExprAST> Parser::parseNumberExpr() {
@@ -140,31 +142,51 @@ std::unique_ptr<PrototypeAST> Parser::parseExtern() {
 
 void Driver::handleDefinition() {
   try {
-    parser_.parseDefinition();
-    out_ << "Parsed a function definition\n";
+    auto ast = parser_.parseDefinition();
+    auto ir = ast->codegen();
+    out_ << "Read function definition: ";
+    llvm::raw_os_ostream rout(out_);
+    ir->print(rout);
+    out_ << "\n";
   } catch (ParserException e) {
     out_ << "Error: " << e.what() << "\n";
     parser_.getNextToken();
+  } catch (CodegenException e) {
+    out_ << "Error: " << e.what() << "\n";
   }
 }
 
 void Driver::handleExtern() {
   try {
-    parser_.parseExtern();
-    out_ << "Parsed an extern\n";
+    auto ast = parser_.parseExtern();
+    auto ir = ast->codegen();
+    out_ << "Read extern: ";
+    llvm::raw_os_ostream rout(out_);
+    ir->print(rout);
+    out_ << "\n";
   } catch (ParserException e) {
     out_ << "Error: " << e.what() << "\n";
     parser_.getNextToken();
+  } catch (CodegenException e) {
+    out_ << "Error: " << e.what() << "\n";
   }
 }
 
 void Driver::handleTopLevelExpression() {
   try {
-    parser_.parseTopLevelExpr();
-    out_ << "Parsed a top-level expr\n";
+    auto ast = parser_.parseTopLevelExpr();
+    auto ir = ast->codegen();
+    out_ << "Read top-level expr: ";
+    llvm::raw_os_ostream rout(out_);
+    ir->print(rout);
+    out_ << "\n";
+    // Remove anonymous function
+    ir->eraseFromParent();
   } catch (ParserException e) {
     out_ << "Error: " << e.what() << "\n";
     parser_.getNextToken();
+  } catch (CodegenException e) {
+    out_ << "Error: " << e.what() << "\n";
   }
 }
 

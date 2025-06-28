@@ -37,7 +37,9 @@ class Driver {
   Parser &parser_;
 
 public:
-  Driver(std::ostream &out, Parser &parser) : out_(out), parser_(parser) {}
+  Driver(std::ostream &out, Parser &parser) : out_(out), parser_(parser) {
+    initializeModule();
+  }
   void handleDefinition();
   void handleExtern();
   void handleTopLevelExpression();

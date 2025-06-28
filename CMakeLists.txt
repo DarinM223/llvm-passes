@@ -25,6 +25,7 @@ file(
     kaleidoscope/main.cpp
     kaleidoscope/lexer.cpp
     kaleidoscope/parser.cpp
+    kaleidoscope/ast.cpp
 )
 
 add_executable(kaleidoscope-exe ${HEADERS} ${SOURCES})
@@ -41,5 +42,7 @@ add_library(MergeBB SHARED MergeBB.cpp)
 add_library(FindFCmpEq SHARED FindFCmpEq.cpp)
 add_library(ConvertFCmpEq SHARED ConvertFCmpEq.cpp)
 
+target_link_libraries(kaleidoscope-exe PRIVATE LLVM)
+target_compile_features(kaleidoscope-exe PUBLIC cxx_std_20)
 target_compile_features(DuplicateBB PUBLIC cxx_std_20)
 target_compile_features(MergeBB PUBLIC cxx_std_20)
