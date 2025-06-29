@@ -7,3 +7,4 @@ Makefile
 *.bin
 out.ll
 kaleidoscope-exe
+compile_commands.json

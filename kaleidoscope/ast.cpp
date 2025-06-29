@@ -22,7 +22,13 @@ Value *NumberExprAST::codegen() {
   return ConstantFP::get(*TheContext, APFloat(val_));
 }
 
-Value *VariableExprAST::codegen() { return NamedValues.lookup(name_); }
+Value *VariableExprAST::codegen() {
+  if (!NamedValues.contains(name_)) {
+    throw CodegenException("Variable " + name_ +
+                           " can't be found in environment");
+  }
+  return NamedValues.lookup(name_);
+}
 
 Value *BinaryExprAST::codegen() {
   auto lhs = lhs_->codegen();
@@ -45,6 +51,10 @@ Value *BinaryExprAST::codegen() {
 
 Value *CallExprAST::codegen() {
   auto fn = TheModule->getFunction(callee_);
+  if (!fn) {
+    throw CodegenException("Function " + callee_ +
+                           " can't be found in the module");
+  }
   if (fn->arg_size() != args_.size()) {
     throw CodegenException("Incorrect # of args passed");
   }

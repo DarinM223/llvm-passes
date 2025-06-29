@@ -12,8 +12,6 @@ int main() {
   Lexer lexer(std::cin);
   Parser parser(lexer, std::move(binopPrecedence));
   Driver driver(std::cout, parser);
-
-  parser.getNextToken();
   driver.mainLoop();
   return 0;
 }

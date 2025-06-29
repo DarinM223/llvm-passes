@@ -175,13 +175,12 @@ void Driver::handleExtern() {
 void Driver::handleTopLevelExpression() {
   try {
     auto ast = parser_.parseTopLevelExpr();
-    auto ir = ast->codegen();
+    std::unique_ptr<llvm::Function, std::function<void(llvm::Function *)>> ir(
+        ast->codegen(), [](llvm::Function *f) { f->eraseFromParent(); });
     out_ << "Read top-level expr: ";
     llvm::raw_os_ostream rout(out_);
     ir->print(rout);
     out_ << "\n";
-    // Remove anonymous function
-    ir->eraseFromParent();
   } catch (ParserException e) {
     out_ << "Error: " << e.what() << "\n";
     parser_.getNextToken();
@@ -191,6 +190,8 @@ void Driver::handleTopLevelExpression() {
 }
 
 void Driver::mainLoop() {
+  out_ << "ready> ";
+  parser_.getNextToken();
   while (true) {
     out_ << "ready> ";
     switch (parser_.getCurrentToken()) {
