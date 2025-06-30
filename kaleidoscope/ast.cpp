@@ -3,6 +3,11 @@
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Verifier.h"
+#include "llvm/Passes/PassBuilder.h"
+#include "llvm/Transforms/InstCombine/InstCombine.h"
+#include "llvm/Transforms/Scalar/GVN.h"
+#include "llvm/Transforms/Scalar/Reassociate.h"
+#include "llvm/Transforms/Scalar/SimplifyCFG.h"
 #include <ranges>
 
 using namespace llvm;
@@ -12,10 +17,28 @@ static std::unique_ptr<IRBuilder<>> TheBuilder;
 static std::unique_ptr<Module> TheModule;
 static StringMap<Value *> NamedValues;
 
-void initializeModule() {
+void initializeModuleAndManagers() {
   TheContext = std::make_unique<LLVMContext>();
   TheBuilder = std::make_unique<IRBuilder<>>(*TheContext);
   TheModule = std::make_unique<Module>("my cool jit", *TheContext);
+  TheFPM = std::make_unique<FunctionPassManager>();
+  TheLAM = std::make_unique<LoopAnalysisManager>();
+  TheFAM = std::make_unique<FunctionAnalysisManager>();
+  TheCGAM = std::make_unique<CGSCCAnalysisManager>();
+  TheMAM = std::make_unique<ModuleAnalysisManager>();
+  ThePIC = std::make_unique<PassInstrumentationCallbacks>();
+  TheSI = std::make_unique<StandardInstrumentations>(*TheContext, true);
+  TheSI->registerCallbacks(*ThePIC, TheMAM.get());
+
+  TheFPM->addPass(InstCombinePass());
+  TheFPM->addPass(ReassociatePass());
+  TheFPM->addPass(GVNPass());
+  TheFPM->addPass(SimplifyCFGPass());
+
+  PassBuilder PB;
+  PB.registerModuleAnalyses(*TheMAM);
+  PB.registerFunctionAnalyses(*TheFAM);
+  PB.crossRegisterProxies(*TheLAM, *TheFAM, *TheCGAM, *TheMAM);
 }
 
 Value *NumberExprAST::codegen() {
@@ -103,6 +126,7 @@ Function *FunctionAST::codegen() {
     auto result = body_->codegen();
     TheBuilder->CreateRet(result);
     verifyFunction(*fn);
+    TheFPM->run(*fn, *TheFAM);
   } catch (CodegenException e) {
     fn->eraseFromParent();
     throw e;
