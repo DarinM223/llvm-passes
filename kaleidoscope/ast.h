@@ -3,6 +3,8 @@
 
 #include "llvm/Analysis/CGSCCPassManager.h"
 #include "llvm/Analysis/LoopAnalysisManager.h"
+#include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/Module.h"
 #include "llvm/IR/PassInstrumentation.h"
 #include "llvm/IR/PassManager.h"
 #include "llvm/IR/Value.h"
@@ -11,14 +13,20 @@
 #include <string>
 #include <vector>
 
-void initializeModuleAndManagers();
-static std::unique_ptr<llvm::FunctionPassManager> TheFPM;
-static std::unique_ptr<llvm::LoopAnalysisManager> TheLAM;
-static std::unique_ptr<llvm::FunctionAnalysisManager> TheFAM;
-static std::unique_ptr<llvm::CGSCCAnalysisManager> TheCGAM;
-static std::unique_ptr<llvm::ModuleAnalysisManager> TheMAM;
-static std::unique_ptr<llvm::PassInstrumentationCallbacks> ThePIC;
-static std::unique_ptr<llvm::StandardInstrumentations> TheSI;
+extern std::unique_ptr<llvm::LLVMContext> TheContext;
+extern std::unique_ptr<llvm::IRBuilder<>> TheBuilder;
+extern std::unique_ptr<llvm::Module> TheModule;
+extern llvm::StringMap<llvm::Value *> NamedValues;
+
+extern std::unique_ptr<llvm::FunctionPassManager> TheFPM;
+extern std::unique_ptr<llvm::LoopAnalysisManager> TheLAM;
+extern std::unique_ptr<llvm::FunctionAnalysisManager> TheFAM;
+extern std::unique_ptr<llvm::CGSCCAnalysisManager> TheCGAM;
+extern std::unique_ptr<llvm::ModuleAnalysisManager> TheMAM;
+extern std::unique_ptr<llvm::PassInstrumentationCallbacks> ThePIC;
+extern std::unique_ptr<llvm::StandardInstrumentations> TheSI;
+
+void initializeModuleAndManagers(const llvm::DataLayout &layout);
 
 class ExprAST {
 public:

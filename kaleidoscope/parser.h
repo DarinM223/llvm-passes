@@ -1,6 +1,7 @@
 #ifndef PARSER_H
 #define PARSER_H
 
+#include "KaleidoscopeJIT.h"
 #include "ast.h"
 #include "lexer.h"
 #include <iostream>
@@ -32,13 +33,17 @@ public:
   std::unique_ptr<PrototypeAST> parseExtern();
 };
 
+static llvm::ExitOnError ExitOnErr;
+
 class Driver {
   std::ostream &out_;
   Parser &parser_;
+  std::unique_ptr<llvm::orc::KaleidoscopeJIT> jit_;
 
 public:
   Driver(std::ostream &out, Parser &parser) : out_(out), parser_(parser) {
-    initializeModuleAndManagers();
+    jit_ = ExitOnErr(llvm::orc::KaleidoscopeJIT::Create());
+    initializeModuleAndManagers(jit_->getDataLayout());
   }
   void handleDefinition();
   void handleExtern();

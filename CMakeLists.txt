@@ -19,6 +19,7 @@ file(
     kaleidoscope/lexer.h
     kaleidoscope/ast.h
     kaleidoscope/parser.h
+    kaleidoscope/KaleidoscopeJIT.h
 )
 file(
     GLOB_RECURSE SOURCES

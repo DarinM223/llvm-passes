@@ -1,7 +1,5 @@
 #include "ast.h"
-#include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Instructions.h"
-#include "llvm/IR/Module.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/Passes/PassBuilder.h"
 #include "llvm/Transforms/InstCombine/InstCombine.h"
@@ -12,15 +10,25 @@
 
 using namespace llvm;
 
-static std::unique_ptr<LLVMContext> TheContext;
-static std::unique_ptr<IRBuilder<>> TheBuilder;
-static std::unique_ptr<Module> TheModule;
-static StringMap<Value *> NamedValues;
+std::unique_ptr<llvm::LLVMContext> TheContext;
+std::unique_ptr<llvm::IRBuilder<>> TheBuilder;
+std::unique_ptr<llvm::Module> TheModule;
+llvm::StringMap<llvm::Value *> NamedValues;
 
-void initializeModuleAndManagers() {
+std::unique_ptr<llvm::FunctionPassManager> TheFPM;
+std::unique_ptr<llvm::LoopAnalysisManager> TheLAM;
+std::unique_ptr<llvm::FunctionAnalysisManager> TheFAM;
+std::unique_ptr<llvm::CGSCCAnalysisManager> TheCGAM;
+std::unique_ptr<llvm::ModuleAnalysisManager> TheMAM;
+std::unique_ptr<llvm::PassInstrumentationCallbacks> ThePIC;
+std::unique_ptr<llvm::StandardInstrumentations> TheSI;
+
+void initializeModuleAndManagers(const DataLayout &layout) {
   TheContext = std::make_unique<LLVMContext>();
   TheBuilder = std::make_unique<IRBuilder<>>(*TheContext);
   TheModule = std::make_unique<Module>("my cool jit", *TheContext);
+  TheModule->setDataLayout(layout);
+
   TheFPM = std::make_unique<FunctionPassManager>();
   TheLAM = std::make_unique<LoopAnalysisManager>();
   TheFAM = std::make_unique<FunctionAnalysisManager>();

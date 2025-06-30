@@ -112,6 +112,13 @@ std::unique_ptr<PrototypeAST> Parser::parsePrototype() {
   std::vector<std::string> argNames;
   while (static_cast<Token>(getNextToken()) == Token::Identifier) {
     argNames.emplace_back(lexer_.getIdentifier());
+    getNextToken();
+    if (currentToken_ == ')') {
+      break;
+    }
+    if (currentToken_ != ',') {
+      throw ParserException("Expected ')' or ',' in argument list");
+    }
   }
   if (currentToken_ != ')') {
     throw ParserException("Expected ')' in prototype");
@@ -175,12 +182,23 @@ void Driver::handleExtern() {
 void Driver::handleTopLevelExpression() {
   try {
     auto ast = parser_.parseTopLevelExpr();
-    std::unique_ptr<llvm::Function, std::function<void(llvm::Function *)>> ir(
-        ast->codegen(), [](llvm::Function *f) { f->eraseFromParent(); });
+    auto ir = ast->codegen();
     out_ << "Read top-level expr: ";
     llvm::raw_os_ostream rout(out_);
     ir->print(rout);
     out_ << "\n";
+
+    auto rt = jit_->getMainJITDylib().createResourceTracker();
+    auto tsm = llvm::orc::ThreadSafeModule(std::move(TheModule),
+                                           std::move(TheContext));
+    ExitOnErr(jit_->addModule(std::move(tsm), rt));
+    initializeModuleAndManagers(jit_->getDataLayout());
+
+    auto exprSymbol = ExitOnErr(jit_->lookup("__anon_expr"));
+    double (*FP)() = exprSymbol.getAddress().toPtr<double (*)()>();
+    out_ << "Evaluated to: " << FP() << "\n";
+
+    ExitOnErr(rt->remove());
   } catch (ParserException e) {
     out_ << "Error: " << e.what() << "\n";
     parser_.getNextToken();
