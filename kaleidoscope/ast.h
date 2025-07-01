@@ -13,10 +13,13 @@
 #include <string>
 #include <vector>
 
+class PrototypeAST;
+
 extern std::unique_ptr<llvm::LLVMContext> TheContext;
 extern std::unique_ptr<llvm::IRBuilder<>> TheBuilder;
 extern std::unique_ptr<llvm::Module> TheModule;
 extern llvm::StringMap<llvm::Value *> NamedValues;
+extern llvm::StringMap<std::unique_ptr<PrototypeAST>> FunctionProtos;
 
 extern std::unique_ptr<llvm::FunctionPassManager> TheFPM;
 extern std::unique_ptr<llvm::LoopAnalysisManager> TheLAM;

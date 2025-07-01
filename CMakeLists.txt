@@ -16,6 +16,7 @@ endif()
 
 file(
     GLOB_RECURSE HEADERS
+    kaleidoscope/library.h
     kaleidoscope/lexer.h
     kaleidoscope/ast.h
     kaleidoscope/parser.h

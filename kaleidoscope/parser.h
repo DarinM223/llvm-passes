@@ -41,10 +41,7 @@ class Driver {
   std::unique_ptr<llvm::orc::KaleidoscopeJIT> jit_;
 
 public:
-  Driver(std::ostream &out, Parser &parser) : out_(out), parser_(parser) {
-    jit_ = ExitOnErr(llvm::orc::KaleidoscopeJIT::Create());
-    initializeModuleAndManagers(jit_->getDataLayout());
-  }
+  Driver(std::ostream &out, Parser &parser);
   void handleDefinition();
   void handleExtern();
   void handleTopLevelExpression();

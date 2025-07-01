@@ -94,6 +94,15 @@ public:
     return CompileLayer.add(RT, std::move(TSM));
   }
 
+  Error addSymbols(StringMap<void *> symbols) {
+    SymbolMap symbolMap;
+    for (auto &[k, v] : symbols) {
+      symbolMap[Mangle(k)] =
+          ExecutorSymbolDef(ExecutorAddr::fromPtr(v), JITSymbolFlags());
+    }
+    return ES->getJITDylibByName("<main>")->define(absoluteSymbols(symbolMap));
+  }
+
   Expected<ExecutorSymbolDef> lookup(StringRef Name) {
     return ES->lookup({&MainJD}, Mangle(Name.str()));
   }

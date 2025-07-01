@@ -14,6 +14,7 @@ std::unique_ptr<llvm::LLVMContext> TheContext;
 std::unique_ptr<llvm::IRBuilder<>> TheBuilder;
 std::unique_ptr<llvm::Module> TheModule;
 llvm::StringMap<llvm::Value *> NamedValues;
+llvm::StringMap<std::unique_ptr<PrototypeAST>> FunctionProtos;
 
 std::unique_ptr<llvm::FunctionPassManager> TheFPM;
 std::unique_ptr<llvm::LoopAnalysisManager> TheLAM;
@@ -49,6 +50,16 @@ void initializeModuleAndManagers(const DataLayout &layout) {
   PB.crossRegisterProxies(*TheLAM, *TheFAM, *TheCGAM, *TheMAM);
 }
 
+Function *getFunction(StringRef name) {
+  if (auto *fn = TheModule->getFunction(name)) {
+    return fn;
+  }
+  if (FunctionProtos.contains(name)) {
+    return FunctionProtos[name]->codegen();
+  }
+  return nullptr;
+}
+
 Value *NumberExprAST::codegen() {
   return ConstantFP::get(*TheContext, APFloat(val_));
 }
@@ -81,7 +92,7 @@ Value *BinaryExprAST::codegen() {
 }
 
 Value *CallExprAST::codegen() {
-  auto fn = TheModule->getFunction(callee_);
+  auto fn = getFunction(callee_);
   if (!fn) {
     throw CodegenException("Function " + callee_ +
                            " can't be found in the module");
@@ -114,9 +125,11 @@ Function *PrototypeAST::codegen() {
 }
 
 Function *FunctionAST::codegen() {
-  auto fn = TheModule->getFunction(prototype_->getName());
+  auto &proto = *prototype_;
+  FunctionProtos[prototype_->getName()] = std::move(prototype_);
+  auto fn = getFunction(proto.getName());
   if (!fn) {
-    fn = prototype_->codegen();
+    throw CodegenException("Could not find function");
   }
   if (!fn->empty()) {
     throw CodegenException("Function cannot be redefined");

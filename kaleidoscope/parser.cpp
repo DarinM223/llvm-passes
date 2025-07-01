@@ -1,4 +1,5 @@
 #include "parser.h"
+#include "library.h"
 #include "llvm/IR/Function.h"
 #include "llvm/Support/raw_os_ostream.h"
 #include <cassert>
@@ -147,6 +148,13 @@ std::unique_ptr<PrototypeAST> Parser::parseExtern() {
   return parsePrototype();
 }
 
+Driver::Driver(std::ostream &out, Parser &parser) : out_(out), parser_(parser) {
+  jit_ = ExitOnErr(llvm::orc::KaleidoscopeJIT::Create());
+  llvm::cantFail(jit_->addSymbols(
+      {{"putchard", (void *)&putchard}, {"printd", (void *)&printd}}));
+  initializeModuleAndManagers(jit_->getDataLayout());
+}
+
 void Driver::handleDefinition() {
   try {
     auto ast = parser_.parseDefinition();
@@ -155,6 +163,9 @@ void Driver::handleDefinition() {
     llvm::raw_os_ostream rout(out_);
     ir->print(rout);
     out_ << "\n";
+    ExitOnErr(jit_->addModule(llvm::orc::ThreadSafeModule(
+        std::move(TheModule), std::move(TheContext))));
+    initializeModuleAndManagers(jit_->getDataLayout());
   } catch (ParserException e) {
     out_ << "Error: " << e.what() << "\n";
     parser_.getNextToken();
@@ -171,6 +182,7 @@ void Driver::handleExtern() {
     llvm::raw_os_ostream rout(out_);
     ir->print(rout);
     out_ << "\n";
+    FunctionProtos[ast->getName()] = std::move(ast);
   } catch (ParserException e) {
     out_ << "Error: " << e.what() << "\n";
     parser_.getNextToken();
