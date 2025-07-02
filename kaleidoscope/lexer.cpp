@@ -17,6 +17,21 @@ Token Lexer::getTok() {
     if (identifier_ == "extern") {
       return Token::Extern;
     }
+    if (identifier_ == "if") {
+      return Token::If;
+    }
+    if (identifier_ == "then") {
+      return Token::Then;
+    }
+    if (identifier_ == "else") {
+      return Token::Else;
+    }
+    if (identifier_ == "for") {
+      return Token::For;
+    }
+    if (identifier_ == "in") {
+      return Token::In;
+    }
     return Token::Identifier;
   }
   if (isdigit(lastChar_) || lastChar_ == '.') {

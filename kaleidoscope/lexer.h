@@ -8,7 +8,12 @@ enum class Token {
   Def = -2,
   Extern = -3,
   Identifier = -4,
-  Number = -5
+  Number = -5,
+  If = -6,
+  Then = -7,
+  Else = -8,
+  For = -9,
+  In = -10
 };
 
 class Lexer {

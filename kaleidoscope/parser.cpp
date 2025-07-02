@@ -48,6 +48,65 @@ std::unique_ptr<ExprAST> Parser::parseIdentifierExpr() {
   return std::make_unique<CallExprAST>(ident, std::move(args));
 }
 
+std::unique_ptr<ExprAST> Parser::parseIfExpr() {
+  getNextToken();
+
+  auto Cond = parseExpression();
+  if (static_cast<Token>(currentToken_) != Token::Then) {
+    throw ParserException("Expected then");
+  }
+  getNextToken();
+
+  auto Then = parseExpression();
+  if (static_cast<Token>(currentToken_) != Token::Else) {
+    throw ParserException("Expected else");
+  }
+  getNextToken();
+
+  auto Else = parseExpression();
+  return std::make_unique<IfExprAST>(std::move(Cond), std::move(Then),
+                                     std::move(Else));
+}
+
+std::unique_ptr<ExprAST> Parser::parseForExpr() {
+  getNextToken();
+
+  if (static_cast<Token>(currentToken_) != Token::Identifier) {
+    throw ParserException("Expected identifier after for");
+  }
+  std::string idName(lexer_.getIdentifier());
+  getNextToken();
+
+  if (currentToken_ != '=') {
+    throw ParserException("Expected '=' after for");
+  }
+  getNextToken();
+
+  auto start = parseExpression();
+  if (currentToken_ != ',') {
+    throw ParserException("Expected ',' after for start value");
+  }
+  getNextToken();
+
+  auto end = parseExpression();
+
+  // The step value is optional
+  std::unique_ptr<ExprAST> step;
+  if (currentToken_ == ',') {
+    getNextToken();
+    step = parseExpression();
+  }
+
+  if (static_cast<Token>(currentToken_) != Token::In) {
+    throw ParserException("Expected 'in' after for");
+  }
+  getNextToken();
+
+  auto body = parseExpression();
+  return std::make_unique<ForExprAST>(idName, std::move(start), std::move(end),
+                                      std::move(step), std::move(body));
+}
+
 std::unique_ptr<ExprAST> Parser::parsePrimary() {
   switch (static_cast<Token>(currentToken_)) {
   case Token::Number:
@@ -56,6 +115,10 @@ std::unique_ptr<ExprAST> Parser::parsePrimary() {
     return parseIdentifierExpr();
   case static_cast<Token>('('):
     return parseParenExpr();
+  case Token::If:
+    return parseIfExpr();
+  case Token::For:
+    return parseForExpr();
   default:
     throw ParserException("Unknown token when expecting an expression");
   }

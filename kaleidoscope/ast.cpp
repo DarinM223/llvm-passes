@@ -91,6 +91,82 @@ Value *BinaryExprAST::codegen() {
   }
 }
 
+Value *IfExprAST::codegen() {
+  auto cond = cond_->codegen();
+  cond = TheBuilder->CreateFCmpONE(cond,
+                                   ConstantFP::get(*TheContext, APFloat(0.0)));
+
+  auto fn = TheBuilder->GetInsertBlock()->getParent();
+
+  auto thenBB = BasicBlock::Create(*TheContext, "then", fn);
+  auto elseBB = BasicBlock::Create(*TheContext, "else");
+  auto mergeBB = BasicBlock::Create(*TheContext, "merge");
+  TheBuilder->CreateCondBr(cond, thenBB, elseBB);
+
+  TheBuilder->SetInsertPoint(thenBB);
+  auto thenValue = then_->codegen();
+  TheBuilder->CreateBr(mergeBB);
+  thenBB = TheBuilder->GetInsertBlock();
+
+  fn->insert(fn->end(), elseBB);
+  TheBuilder->SetInsertPoint(elseBB);
+  auto elseValue = else_->codegen();
+  TheBuilder->CreateBr(mergeBB);
+  elseBB = TheBuilder->GetInsertBlock();
+
+  fn->insert(fn->end(), mergeBB);
+  TheBuilder->SetInsertPoint(mergeBB);
+  auto phiNode =
+      TheBuilder->CreatePHI(Type::getDoubleTy(*TheContext), 2, "iftmp");
+  phiNode->addIncoming(thenValue, thenBB);
+  phiNode->addIncoming(elseValue, elseBB);
+  return phiNode;
+}
+
+Value *ForExprAST::codegen() {
+  auto start = start_->codegen();
+
+  // Create block for condition.
+  auto fn = TheBuilder->GetInsertBlock()->getParent();
+  auto preheaderBB = TheBuilder->GetInsertBlock();
+  auto loopBB = BasicBlock::Create(*TheContext, "loop", fn);
+  TheBuilder->CreateBr(loopBB);
+
+  TheBuilder->SetInsertPoint(loopBB);
+  auto varPHI =
+      TheBuilder->CreatePHI(Type::getDoubleTy(*TheContext), 2, varName_);
+  varPHI->addIncoming(start, preheaderBB);
+
+  // Store variable name in environment temporarily when doing codegen for body.
+  auto oldVal = NamedValues[varName_];
+  NamedValues[varName_] = varPHI;
+
+  auto body = body_->codegen();
+  auto step =
+      step_ ? step_->codegen() : ConstantFP::get(*TheContext, APFloat(1.0));
+  auto nextVar = TheBuilder->CreateFAdd(varPHI, step);
+
+  auto end = end_->codegen();
+  end = TheBuilder->CreateFCmpONE(
+      end, ConstantFP::get(*TheContext, APFloat(0.0)), "loopcond");
+
+  auto loopEndBB = TheBuilder->GetInsertBlock();
+  auto afterBB = BasicBlock::Create(*TheContext, "afterloop", fn);
+  TheBuilder->CreateCondBr(end, loopBB, afterBB);
+
+  TheBuilder->SetInsertPoint(afterBB);
+  varPHI->addIncoming(nextVar, loopEndBB);
+
+  // Restore old variable name in environment.
+  if (oldVal) {
+    NamedValues[varName_] = oldVal;
+  } else {
+    NamedValues.erase(varName_);
+  }
+
+  return Constant::getNullValue(Type::getDoubleTy(*TheContext));
+}
+
 Value *CallExprAST::codegen() {
   auto fn = getFunction(callee_);
   if (!fn) {

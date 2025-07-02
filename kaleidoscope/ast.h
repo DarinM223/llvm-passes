@@ -64,6 +64,30 @@ public:
   llvm::Value *codegen() override;
 };
 
+class IfExprAST : public ExprAST {
+  std::unique_ptr<ExprAST> cond_, then_, else_;
+
+public:
+  IfExprAST(std::unique_ptr<ExprAST> Cond, std::unique_ptr<ExprAST> Then,
+            std::unique_ptr<ExprAST> Else)
+      : cond_(std::move(Cond)), then_(std::move(Then)), else_(std::move(Else)) {
+  }
+  llvm::Value *codegen() override;
+};
+
+class ForExprAST : public ExprAST {
+  std::string varName_;
+  std::unique_ptr<ExprAST> start_, end_, step_, body_;
+
+public:
+  ForExprAST(const std::string &varName, std::unique_ptr<ExprAST> start,
+             std::unique_ptr<ExprAST> end, std::unique_ptr<ExprAST> step,
+             std::unique_ptr<ExprAST> body)
+      : varName_(varName), start_(std::move(start)), end_(std::move(end)),
+        step_(std::move(step)), body_(std::move(body)) {}
+  llvm::Value *codegen() override;
+};
+
 class CallExprAST : public ExprAST {
   std::string callee_;
   std::vector<std::unique_ptr<ExprAST>> args_;
