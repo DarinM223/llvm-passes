@@ -32,6 +32,12 @@ Token Lexer::getTok() {
     if (identifier_ == "in") {
       return Token::In;
     }
+    if (identifier_ == "binary") {
+      return Token::Binary;
+    }
+    if (identifier_ == "unary") {
+      return Token::Unary;
+    }
     return Token::Identifier;
   }
   if (isdigit(lastChar_) || lastChar_ == '.') {

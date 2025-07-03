@@ -72,6 +72,16 @@ Value *VariableExprAST::codegen() {
   return NamedValues.lookup(name_);
 }
 
+Value *UnaryExprAST::codegen() {
+  auto operand = operand_->codegen();
+  auto unOpName = std::string("unary") + op_;
+  auto fn = getFunction(unOpName);
+  if (!fn) {
+    throw CodegenException("Unary operator " + unOpName + "not found!");
+  }
+  return TheBuilder->CreateCall(fn, operand, "unop");
+}
+
 Value *BinaryExprAST::codegen() {
   auto lhs = lhs_->codegen();
   auto rhs = rhs_->codegen();
@@ -87,8 +97,17 @@ Value *BinaryExprAST::codegen() {
     return TheBuilder->CreateUIToFP(cmp, Type::getDoubleTy(*TheContext));
   }
   default:
-    throw CodegenException("Invalid binary op");
+    break;
   }
+
+  // Emit calls for user defined operators
+  std::string binOpName = std::string("binary") + op_;
+  Function *fn = getFunction(binOpName);
+  if (!fn) {
+    throw CodegenException("Binary operator " + binOpName + " not found!");
+  }
+
+  return TheBuilder->CreateCall(fn, {lhs, rhs}, "binop");
 }
 
 Value *IfExprAST::codegen() {
@@ -200,7 +219,7 @@ Function *PrototypeAST::codegen() {
   return fn;
 }
 
-Function *FunctionAST::codegen() {
+Function *FunctionAST::codegen(std::unordered_map<char, int> &binopPrecedence) {
   auto &proto = *prototype_;
   FunctionProtos[prototype_->getName()] = std::move(prototype_);
   auto fn = getFunction(proto.getName());
@@ -209,6 +228,10 @@ Function *FunctionAST::codegen() {
   }
   if (!fn->empty()) {
     throw CodegenException("Function cannot be redefined");
+  }
+
+  if (proto.isBinaryOp()) {
+    binopPrecedence[proto.getOperatorName()] = proto.getBinaryPrecedence();
   }
 
   auto BB = BasicBlock::Create(*TheContext, "entry", fn);

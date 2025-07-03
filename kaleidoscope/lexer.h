@@ -13,7 +13,9 @@ enum class Token {
   Then = -7,
   Else = -8,
   For = -9,
-  In = -10
+  In = -10,
+  Binary = -11,
+  Unary = -12
 };
 
 class Lexer {

@@ -11,6 +11,7 @@ class Parser {
   Lexer &lexer_;
   int currentToken_;
   std::unordered_map<char, int> binopPrecedence_;
+  friend class Driver;
 
 public:
   Parser(Lexer &lexer, std::unordered_map<char, int> binopPrecedence)
@@ -27,6 +28,7 @@ public:
   std::unique_ptr<ExprAST> parseForExpr();
   std::unique_ptr<ExprAST> parsePrimary();
   std::unique_ptr<ExprAST> parseExpression();
+  std::unique_ptr<ExprAST> parseUnary();
   std::unique_ptr<ExprAST> parseBinOpRHS(int prec,
                                          std::unique_ptr<ExprAST> lhs);
   std::unique_ptr<PrototypeAST> parsePrototype();

@@ -11,6 +11,7 @@
 #include "llvm/Passes/StandardInstrumentations.h"
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 class PrototypeAST;
@@ -64,6 +65,16 @@ public:
   llvm::Value *codegen() override;
 };
 
+class UnaryExprAST : public ExprAST {
+  char op_;
+  std::unique_ptr<ExprAST> operand_;
+
+public:
+  UnaryExprAST(char op, std::unique_ptr<ExprAST> operand)
+      : op_(op), operand_(std::move(operand)) {}
+  llvm::Value *codegen() override;
+};
+
 class IfExprAST : public ExprAST {
   std::unique_ptr<ExprAST> cond_, then_, else_;
 
@@ -102,12 +113,23 @@ public:
 class PrototypeAST {
   std::string name_;
   std::vector<std::string> args_;
+  bool isOperator_;
+  unsigned precedence_;
 
 public:
-  PrototypeAST(const std::string &name, std::vector<std::string> args)
-      : name_(name), args_(std::move(args)) {}
+  PrototypeAST(const std::string &name, std::vector<std::string> args,
+               bool isOperator = false, unsigned precedence = 0)
+      : name_(name), args_(std::move(args)), isOperator_(isOperator),
+        precedence_(precedence) {}
 
   const std::string &getName() const noexcept { return name_; }
+  bool isUnaryOp() const noexcept { return isOperator_ && args_.size() == 1; }
+  bool isBinaryOp() const noexcept { return isOperator_ && args_.size() == 2; }
+  char getOperatorName() const {
+    assert(isUnaryOp() || isBinaryOp());
+    return name_[name_.size() - 1];
+  }
+  unsigned getBinaryPrecedence() const noexcept { return precedence_; }
   llvm::Function *codegen();
 };
 
@@ -119,7 +141,7 @@ public:
   FunctionAST(std::unique_ptr<PrototypeAST> prototype,
               std::unique_ptr<ExprAST> body)
       : prototype_(std::move(prototype)), body_(std::move(body)) {}
-  llvm::Function *codegen();
+  llvm::Function *codegen(std::unordered_map<char, int> &binopPrecedence);
 };
 
 class CodegenException : public std::exception {

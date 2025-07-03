@@ -137,8 +137,19 @@ int Parser::getTokPrecedence() {
 }
 
 std::unique_ptr<ExprAST> Parser::parseExpression() {
-  auto lhs = parsePrimary();
+  auto lhs = parseUnary();
   return parseBinOpRHS(0, std::move(lhs));
+}
+
+std::unique_ptr<ExprAST> Parser::parseUnary() {
+  if (!isascii(currentToken_) || currentToken_ == '(' || currentToken_ == ',') {
+    return parsePrimary();
+  }
+
+  char opc = currentToken_;
+  getNextToken();
+  auto operand = parseUnary();
+  return std::make_unique<UnaryExprAST>(opc, std::move(operand));
 }
 
 std::unique_ptr<ExprAST> Parser::parseBinOpRHS(int prec,
@@ -152,7 +163,7 @@ std::unique_ptr<ExprAST> Parser::parseBinOpRHS(int prec,
     int binOp = currentToken_;
     getNextToken();
 
-    auto rhs = parsePrimary();
+    auto rhs = parseUnary();
     int nextPrec = getTokPrecedence();
     if (tokPrec < nextPrec) {
       rhs = parseBinOpRHS(tokPrec + 1, std::move(rhs));
@@ -163,12 +174,47 @@ std::unique_ptr<ExprAST> Parser::parseBinOpRHS(int prec,
   assert(0 && "parseBinOpRHS: cannot reach here");
 }
 
+enum class ParsePrototypeType { Identifier = 0, Unary, Binary };
+
 std::unique_ptr<PrototypeAST> Parser::parsePrototype() {
-  if (static_cast<Token>(currentToken_) != Token::Identifier) {
+  std::string fnName;
+  auto kind = ParsePrototypeType::Identifier;
+  unsigned binaryPrecedence = 30;
+
+  switch (static_cast<Token>(currentToken_)) {
+  case Token::Identifier:
+    fnName = lexer_.getIdentifier();
+    getNextToken();
+    break;
+  case Token::Unary:
+    getNextToken();
+    if (!isascii(currentToken_)) {
+      throw ParserException("Expected unary operator");
+    }
+    fnName = std::string("unary") + static_cast<char>(currentToken_);
+    kind = ParsePrototypeType::Unary;
+    getNextToken();
+    break;
+  case Token::Binary:
+    getNextToken();
+    if (!isascii(currentToken_)) {
+      throw ParserException("Expected binary operator");
+    }
+    fnName = std::string("binary") + static_cast<char>(currentToken_);
+    kind = ParsePrototypeType::Binary;
+    getNextToken();
+    if (static_cast<Token>(currentToken_) == Token::Number) {
+      if (lexer_.getNumber() < 1 || lexer_.getNumber() > 100) {
+        throw ParserException("Invalid precedence: must be 1..100");
+      }
+      binaryPrecedence = (unsigned)lexer_.getNumber();
+      getNextToken();
+    }
+    break;
+  default:
     throw ParserException("Expected function name in prototype");
   }
-  std::string fnName(lexer_.getIdentifier());
-  getNextToken();
+
   if (currentToken_ != '(') {
     throw ParserException("Expected '(' in prototype");
   }
@@ -189,7 +235,13 @@ std::unique_ptr<PrototypeAST> Parser::parsePrototype() {
   }
   getNextToken();
 
-  return std::make_unique<PrototypeAST>(fnName, std::move(argNames));
+  bool isOperator = kind != ParsePrototypeType::Identifier;
+  if (isOperator && argNames.size() != static_cast<size_t>(kind)) {
+    throw ParserException("Invalid number of operands for operator");
+  }
+
+  return std::make_unique<PrototypeAST>(fnName, std::move(argNames), isOperator,
+                                        binaryPrecedence);
 }
 
 std::unique_ptr<FunctionAST> Parser::parseDefinition() {
@@ -213,7 +265,7 @@ std::unique_ptr<PrototypeAST> Parser::parseExtern() {
 
 Driver::Driver(std::ostream &out, Parser &parser) : out_(out), parser_(parser) {
   jit_ = ExitOnErr(llvm::orc::KaleidoscopeJIT::Create());
-  llvm::cantFail(jit_->addSymbols(
+  ExitOnErr(jit_->addSymbols(
       {{"putchard", (void *)&putchard}, {"printd", (void *)&printd}}));
   initializeModuleAndManagers(jit_->getDataLayout());
 }
@@ -221,7 +273,7 @@ Driver::Driver(std::ostream &out, Parser &parser) : out_(out), parser_(parser) {
 void Driver::handleDefinition() {
   try {
     auto ast = parser_.parseDefinition();
-    auto ir = ast->codegen();
+    auto ir = ast->codegen(parser_.binopPrecedence_);
     out_ << "Read function definition: ";
     llvm::raw_os_ostream rout(out_);
     ir->print(rout);
@@ -257,7 +309,7 @@ void Driver::handleExtern() {
 void Driver::handleTopLevelExpression() {
   try {
     auto ast = parser_.parseTopLevelExpr();
-    auto ir = ast->codegen();
+    auto ir = ast->codegen(parser_.binopPrecedence_);
     out_ << "Read top-level expr: ";
     llvm::raw_os_ostream rout(out_);
     ir->print(rout);
