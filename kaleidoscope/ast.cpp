@@ -6,6 +6,7 @@
 #include "llvm/Transforms/Scalar/GVN.h"
 #include "llvm/Transforms/Scalar/Reassociate.h"
 #include "llvm/Transforms/Scalar/SimplifyCFG.h"
+#include "llvm/Transforms/Utils/Mem2Reg.h"
 #include <ranges>
 
 using namespace llvm;
@@ -13,7 +14,7 @@ using namespace llvm;
 std::unique_ptr<llvm::LLVMContext> TheContext;
 std::unique_ptr<llvm::IRBuilder<>> TheBuilder;
 std::unique_ptr<llvm::Module> TheModule;
-llvm::StringMap<llvm::Value *> NamedValues;
+llvm::StringMap<llvm::AllocaInst *> NamedValues;
 llvm::StringMap<std::unique_ptr<PrototypeAST>> FunctionProtos;
 
 std::unique_ptr<llvm::FunctionPassManager> TheFPM;
@@ -39,6 +40,7 @@ void initializeModuleAndManagers(const DataLayout &layout) {
   TheSI = std::make_unique<StandardInstrumentations>(*TheContext, true);
   TheSI->registerCallbacks(*ThePIC, TheMAM.get());
 
+  TheFPM->addPass(PromotePass());
   TheFPM->addPass(InstCombinePass());
   TheFPM->addPass(ReassociatePass());
   TheFPM->addPass(GVNPass());
@@ -48,6 +50,12 @@ void initializeModuleAndManagers(const DataLayout &layout) {
   PB.registerModuleAnalyses(*TheMAM);
   PB.registerFunctionAnalyses(*TheFAM);
   PB.crossRegisterProxies(*TheLAM, *TheFAM, *TheCGAM, *TheMAM);
+}
+
+static AllocaInst *createEntryBlockAlloca(Function *fn, StringRef varName) {
+  IRBuilder<> builder(&fn->getEntryBlock(), fn->getEntryBlock().begin());
+  return builder.CreateAlloca(Type::getDoubleTy(fn->getContext()), nullptr,
+                              varName);
 }
 
 Function *getFunction(StringRef name) {
@@ -69,7 +77,32 @@ Value *VariableExprAST::codegen() {
     throw CodegenException("Variable " + name_ +
                            " can't be found in environment");
   }
-  return NamedValues.lookup(name_);
+  auto alloca = NamedValues.lookup(name_);
+  return TheBuilder->CreateLoad(alloca->getAllocatedType(), alloca, name_);
+}
+
+Value *VarExprAST::codegen() {
+  StringMap<llvm::AllocaInst *> oldValues;
+  auto fn = TheBuilder->GetInsertBlock()->getParent();
+  for (auto &[var, init] : varNames_) {
+    auto initVal =
+        init ? init->codegen() : ConstantFP::get(*TheContext, APFloat(0.0));
+    auto alloca = createEntryBlockAlloca(fn, var);
+    TheBuilder->CreateStore(initVal, alloca);
+    oldValues[var] = NamedValues[var];
+    NamedValues[var] = alloca;
+  }
+
+  auto result = body_->codegen();
+
+  for (auto &[var, _] : varNames_) {
+    if (oldValues[var]) {
+      NamedValues[var] = oldValues[var];
+    } else {
+      NamedValues.erase(var);
+    }
+  }
+  return result;
 }
 
 Value *UnaryExprAST::codegen() {
@@ -83,6 +116,21 @@ Value *UnaryExprAST::codegen() {
 }
 
 Value *BinaryExprAST::codegen() {
+  if (op_ == '=') {
+    auto lhse = static_cast<VariableExprAST *>(lhs_.get());
+    if (!lhse) {
+      throw CodegenException("Destination of '=' must be a variable");
+    }
+
+    auto rhs = rhs_->codegen();
+    if (!NamedValues.contains(lhse->getName())) {
+      throw CodegenException("Unknown variable name: " + lhse->getName());
+    }
+    auto alloca = NamedValues[lhse->getName()];
+    TheBuilder->CreateStore(rhs, alloca);
+    return rhs;
+  }
+
   auto lhs = lhs_->codegen();
   auto rhs = rhs_->codegen();
   switch (op_) {
@@ -143,38 +191,36 @@ Value *IfExprAST::codegen() {
 }
 
 Value *ForExprAST::codegen() {
+  auto fn = TheBuilder->GetInsertBlock()->getParent();
+  auto alloca = createEntryBlockAlloca(fn, varName_);
   auto start = start_->codegen();
+  TheBuilder->CreateStore(start, alloca);
 
   // Create block for condition.
-  auto fn = TheBuilder->GetInsertBlock()->getParent();
-  auto preheaderBB = TheBuilder->GetInsertBlock();
   auto loopBB = BasicBlock::Create(*TheContext, "loop", fn);
   TheBuilder->CreateBr(loopBB);
-
   TheBuilder->SetInsertPoint(loopBB);
-  auto varPHI =
-      TheBuilder->CreatePHI(Type::getDoubleTy(*TheContext), 2, varName_);
-  varPHI->addIncoming(start, preheaderBB);
 
   // Store variable name in environment temporarily when doing codegen for body.
   auto oldVal = NamedValues[varName_];
-  NamedValues[varName_] = varPHI;
+  NamedValues[varName_] = alloca;
 
   auto body = body_->codegen();
   auto step =
       step_ ? step_->codegen() : ConstantFP::get(*TheContext, APFloat(1.0));
-  auto nextVar = TheBuilder->CreateFAdd(varPHI, step);
-
   auto end = end_->codegen();
+
+  auto nextVar = TheBuilder->CreateFAdd(
+      TheBuilder->CreateLoad(alloca->getAllocatedType(), alloca, varName_),
+      step);
+  TheBuilder->CreateStore(nextVar, alloca);
+
   end = TheBuilder->CreateFCmpONE(
       end, ConstantFP::get(*TheContext, APFloat(0.0)), "loopcond");
 
-  auto loopEndBB = TheBuilder->GetInsertBlock();
   auto afterBB = BasicBlock::Create(*TheContext, "afterloop", fn);
   TheBuilder->CreateCondBr(end, loopBB, afterBB);
-
   TheBuilder->SetInsertPoint(afterBB);
-  varPHI->addIncoming(nextVar, loopEndBB);
 
   // Restore old variable name in environment.
   if (oldVal) {
@@ -239,7 +285,9 @@ Function *FunctionAST::codegen(std::unordered_map<char, int> &binopPrecedence) {
 
   NamedValues.clear();
   for (auto &arg : fn->args()) {
-    NamedValues[arg.getName()] = &arg;
+    auto alloca = createEntryBlockAlloca(fn, arg.getName());
+    TheBuilder->CreateStore(&arg, alloca);
+    NamedValues[arg.getName()] = alloca;
   }
 
   try {

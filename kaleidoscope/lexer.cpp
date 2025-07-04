@@ -38,6 +38,9 @@ Token Lexer::getTok() {
     if (identifier_ == "unary") {
       return Token::Unary;
     }
+    if (identifier_ == "var") {
+      return Token::Var;
+    }
     return Token::Identifier;
   }
   if (isdigit(lastChar_) || lastChar_ == '.') {

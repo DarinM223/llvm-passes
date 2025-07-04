@@ -1,5 +1,5 @@
 # Run this script at the project root by running:
-# ./kaleidoscope-exe < script.kaleidoscope
+# ./kaleidoscope-exe < kaleidoscope/examples/mandel.kaleidoscope
 
 # Logical unary not.
 def unary!(v)

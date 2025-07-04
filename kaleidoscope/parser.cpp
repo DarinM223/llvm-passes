@@ -107,6 +107,44 @@ std::unique_ptr<ExprAST> Parser::parseForExpr() {
                                       std::move(step), std::move(body));
 }
 
+std::unique_ptr<ExprAST> Parser::parseVarExpr() {
+  getNextToken();
+
+  std::vector<std::pair<std::string, std::unique_ptr<ExprAST>>> varNames;
+  if (static_cast<Token>(currentToken_) != Token::Identifier) {
+    throw ParserException("Expected identifier after the var");
+  }
+
+  while (true) {
+    std::string name(lexer_.getIdentifier());
+    getNextToken();
+
+    std::unique_ptr<ExprAST> init;
+    if (currentToken_ == '=') {
+      getNextToken();
+      init = parseExpression();
+    }
+
+    varNames.push_back(std::make_pair(name, std::move(init)));
+    if (currentToken_ != ',') {
+      break;
+    }
+    getNextToken();
+
+    if (static_cast<Token>(currentToken_) != Token::Identifier) {
+      throw ParserException("Expected identifier list after var");
+    }
+  }
+
+  if (static_cast<Token>(currentToken_) != Token::In) {
+    throw ParserException("Expected 'in' keyword after 'var'");
+  }
+  getNextToken();
+
+  auto body = parseExpression();
+  return std::make_unique<VarExprAST>(std::move(varNames), std::move(body));
+}
+
 std::unique_ptr<ExprAST> Parser::parsePrimary() {
   switch (static_cast<Token>(currentToken_)) {
   case Token::Number:
@@ -119,6 +157,8 @@ std::unique_ptr<ExprAST> Parser::parsePrimary() {
     return parseIfExpr();
   case Token::For:
     return parseForExpr();
+  case Token::Var:
+    return parseVarExpr();
   default:
     throw ParserException("Unknown token when expecting an expression");
   }

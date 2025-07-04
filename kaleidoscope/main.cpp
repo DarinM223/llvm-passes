@@ -11,6 +11,7 @@ int main() {
   llvm::InitializeNativeTargetAsmParser();
 
   std::unordered_map<char, int> binopPrecedence;
+  binopPrecedence['='] = 2;
   binopPrecedence['<'] = 10;
   binopPrecedence['+'] = 20;
   binopPrecedence['-'] = 20;

@@ -19,7 +19,7 @@ class PrototypeAST;
 extern std::unique_ptr<llvm::LLVMContext> TheContext;
 extern std::unique_ptr<llvm::IRBuilder<>> TheBuilder;
 extern std::unique_ptr<llvm::Module> TheModule;
-extern llvm::StringMap<llvm::Value *> NamedValues;
+extern llvm::StringMap<llvm::AllocaInst *> NamedValues;
 extern llvm::StringMap<std::unique_ptr<PrototypeAST>> FunctionProtos;
 
 extern std::unique_ptr<llvm::FunctionPassManager> TheFPM;
@@ -46,11 +46,26 @@ public:
   llvm::Value *codegen() override;
 };
 
+/// @brief Expression for referencing defined variables.
 class VariableExprAST : public ExprAST {
   std::string name_;
 
 public:
+  const std::string &getName() { return name_; }
   VariableExprAST(const std::string &name) : name_(name) {}
+  llvm::Value *codegen() override;
+};
+
+/// @brief Expression for creating new locally defined variables.
+class VarExprAST : public ExprAST {
+  std::vector<std::pair<std::string, std::unique_ptr<ExprAST>>> varNames_;
+  std::unique_ptr<ExprAST> body_;
+
+public:
+  VarExprAST(
+      std::vector<std::pair<std::string, std::unique_ptr<ExprAST>>> varNames,
+      std::unique_ptr<ExprAST> body)
+      : varNames_(std::move(varNames)), body_(std::move(body)) {}
   llvm::Value *codegen() override;
 };
 
