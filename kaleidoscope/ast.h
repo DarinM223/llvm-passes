@@ -30,6 +30,7 @@ extern std::unique_ptr<llvm::ModuleAnalysisManager> TheMAM;
 extern std::unique_ptr<llvm::PassInstrumentationCallbacks> ThePIC;
 extern std::unique_ptr<llvm::StandardInstrumentations> TheSI;
 
+void initializeModuleAndManagers();
 void initializeModuleAndManagers(const llvm::DataLayout &layout);
 
 class ExprAST {

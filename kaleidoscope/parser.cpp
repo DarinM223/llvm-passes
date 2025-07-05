@@ -303,11 +303,16 @@ std::unique_ptr<PrototypeAST> Parser::parseExtern() {
   return parsePrototype();
 }
 
-Driver::Driver(std::ostream &out, Parser &parser) : out_(out), parser_(parser) {
-  jit_ = ExitOnErr(llvm::orc::KaleidoscopeJIT::Create());
-  ExitOnErr(jit_->addSymbols(
-      {{"putchard", (void *)&putchard}, {"printd", (void *)&printd}}));
-  initializeModuleAndManagers(jit_->getDataLayout());
+Driver::Driver(std::ostream &out, Parser &parser, bool useJIT)
+    : out_(out), parser_(parser) {
+  if (useJIT) {
+    jit_ = ExitOnErr(llvm::orc::KaleidoscopeJIT::Create());
+    ExitOnErr(jit_->addSymbols(
+        {{"putchard", (void *)&putchard}, {"printd", (void *)&printd}}));
+    initializeModuleAndManagers(jit_->getDataLayout());
+  } else {
+    initializeModuleAndManagers();
+  }
 }
 
 void Driver::handleDefinition() {
@@ -318,9 +323,11 @@ void Driver::handleDefinition() {
     llvm::raw_os_ostream rout(out_);
     ir->print(rout);
     out_ << "\n";
-    ExitOnErr(jit_->addModule(llvm::orc::ThreadSafeModule(
-        std::move(TheModule), std::move(TheContext))));
-    initializeModuleAndManagers(jit_->getDataLayout());
+    if (jit_) {
+      ExitOnErr(jit_->addModule(llvm::orc::ThreadSafeModule(
+          std::move(TheModule), std::move(TheContext))));
+      initializeModuleAndManagers(jit_->getDataLayout());
+    }
   } catch (ParserException e) {
     out_ << "Error: " << e.what() << "\n";
     parser_.getNextToken();
@@ -355,17 +362,19 @@ void Driver::handleTopLevelExpression() {
     ir->print(rout);
     out_ << "\n";
 
-    auto rt = jit_->getMainJITDylib().createResourceTracker();
-    auto tsm = llvm::orc::ThreadSafeModule(std::move(TheModule),
-                                           std::move(TheContext));
-    ExitOnErr(jit_->addModule(std::move(tsm), rt));
-    initializeModuleAndManagers(jit_->getDataLayout());
+    if (jit_) {
+      auto rt = jit_->getMainJITDylib().createResourceTracker();
+      auto tsm = llvm::orc::ThreadSafeModule(std::move(TheModule),
+                                             std::move(TheContext));
+      ExitOnErr(jit_->addModule(std::move(tsm), rt));
+      initializeModuleAndManagers(jit_->getDataLayout());
 
-    auto exprSymbol = ExitOnErr(jit_->lookup("__anon_expr"));
-    double (*FP)() = exprSymbol.getAddress().toPtr<double (*)()>();
-    out_ << "Evaluated to: " << FP() << "\n";
+      auto exprSymbol = ExitOnErr(jit_->lookup("__anon_expr"));
+      double (*FP)() = exprSymbol.getAddress().toPtr<double (*)()>();
+      out_ << "Evaluated to: " << FP() << "\n";
 
-    ExitOnErr(rt->remove());
+      ExitOnErr(rt->remove());
+    }
   } catch (ParserException e) {
     out_ << "Error: " << e.what() << "\n";
     parser_.getNextToken();

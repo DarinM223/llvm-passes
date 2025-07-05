@@ -25,11 +25,10 @@ std::unique_ptr<llvm::ModuleAnalysisManager> TheMAM;
 std::unique_ptr<llvm::PassInstrumentationCallbacks> ThePIC;
 std::unique_ptr<llvm::StandardInstrumentations> TheSI;
 
-void initializeModuleAndManagers(const DataLayout &layout) {
+void initializeModuleAndManagers() {
   TheContext = std::make_unique<LLVMContext>();
   TheBuilder = std::make_unique<IRBuilder<>>(*TheContext);
   TheModule = std::make_unique<Module>("my cool jit", *TheContext);
-  TheModule->setDataLayout(layout);
 
   TheFPM = std::make_unique<FunctionPassManager>();
   TheLAM = std::make_unique<LoopAnalysisManager>();
@@ -52,6 +51,11 @@ void initializeModuleAndManagers(const DataLayout &layout) {
   PB.crossRegisterProxies(*TheLAM, *TheFAM, *TheCGAM, *TheMAM);
 }
 
+void initializeModuleAndManagers(const DataLayout &layout) {
+  initializeModuleAndManagers();
+  TheModule->setDataLayout(layout);
+}
+
 static AllocaInst *createEntryBlockAlloca(Function *fn, StringRef varName) {
   IRBuilder<> builder(&fn->getEntryBlock(), fn->getEntryBlock().begin());
   return builder.CreateAlloca(Type::getDoubleTy(fn->getContext()), nullptr,
@@ -59,7 +63,7 @@ static AllocaInst *createEntryBlockAlloca(Function *fn, StringRef varName) {
 }
 
 Function *getFunction(StringRef name) {
-  if (auto *fn = TheModule->getFunction(name)) {
+  if (auto fn = TheModule->getFunction(name)) {
     return fn;
   }
   if (FunctionProtos.contains(name)) {
