@@ -146,18 +146,18 @@ std::unique_ptr<ExprAST> Parser::parseVarExpr() {
 }
 
 std::unique_ptr<ExprAST> Parser::parsePrimary() {
-  switch (static_cast<Token>(currentToken_)) {
-  case Token::Number:
+  switch (currentToken_) {
+  case static_cast<int>(Token::Number):
     return parseNumberExpr();
-  case Token::Identifier:
+  case static_cast<int>(Token::Identifier):
     return parseIdentifierExpr();
-  case static_cast<Token>('('):
+  case '(':
     return parseParenExpr();
-  case Token::If:
+  case static_cast<int>(Token::If):
     return parseIfExpr();
-  case Token::For:
+  case static_cast<int>(Token::For):
     return parseForExpr();
-  case Token::Var:
+  case static_cast<int>(Token::Var):
     return parseVarExpr();
   default:
     throw ParserException("Unknown token when expecting an expression");
@@ -307,8 +307,9 @@ Driver::Driver(std::ostream &out, Parser &parser, bool useJIT)
     : out_(out), parser_(parser) {
   if (useJIT) {
     jit_ = ExitOnErr(llvm::orc::KaleidoscopeJIT::Create());
-    ExitOnErr(jit_->addSymbols(
-        {{"putchard", (void *)&putchard}, {"printd", (void *)&printd}}));
+    ExitOnErr(
+        jit_->addSymbols({{"putchard", reinterpret_cast<void *>(&putchard)},
+                          {"printd", reinterpret_cast<void *>(&printd)}}));
     initializeModuleAndManagers(jit_->getDataLayout());
   } else {
     initializeModuleAndManagers();
@@ -328,10 +329,10 @@ void Driver::handleDefinition() {
           std::move(TheModule), std::move(TheContext))));
       initializeModuleAndManagers(jit_->getDataLayout());
     }
-  } catch (ParserException e) {
+  } catch (ParserException &e) {
     out_ << "Error: " << e.what() << "\n";
     parser_.getNextToken();
-  } catch (CodegenException e) {
+  } catch (CodegenException &e) {
     out_ << "Error: " << e.what() << "\n";
   }
 }
@@ -345,10 +346,10 @@ void Driver::handleExtern() {
     ir->print(rout);
     out_ << "\n";
     FunctionProtos[ast->getName()] = std::move(ast);
-  } catch (ParserException e) {
+  } catch (ParserException &e) {
     out_ << "Error: " << e.what() << "\n";
     parser_.getNextToken();
-  } catch (CodegenException e) {
+  } catch (CodegenException &e) {
     out_ << "Error: " << e.what() << "\n";
   }
 }
@@ -375,10 +376,10 @@ void Driver::handleTopLevelExpression() {
 
       ExitOnErr(rt->remove());
     }
-  } catch (ParserException e) {
+  } catch (ParserException &e) {
     out_ << "Error: " << e.what() << "\n";
     parser_.getNextToken();
-  } catch (CodegenException e) {
+  } catch (CodegenException &e) {
     out_ << "Error: " << e.what() << "\n";
   }
 }
@@ -388,16 +389,16 @@ void Driver::mainLoop() {
   parser_.getNextToken();
   while (true) {
     out_ << "ready> ";
-    switch (parser_.getCurrentToken()) {
-    case Token::Eof:
+    switch (static_cast<int>(parser_.getCurrentToken())) {
+    case static_cast<int>(Token::Eof):
       return;
-    case static_cast<Token>(';'):
+    case ';':
       parser_.getNextToken();
       break;
-    case Token::Def:
+    case static_cast<int>(Token::Def):
       handleDefinition();
       break;
-    case Token::Extern:
+    case static_cast<int>(Token::Extern):
       handleExtern();
       break;
     default:

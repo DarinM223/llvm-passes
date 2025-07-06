@@ -11,7 +11,6 @@ STATISTIC(SubstCount, "The # of substituted instructions");
 namespace {
 struct MBASub : PassInfoMixin<MBASub> {
   PreservedAnalyses run(Function &F, FunctionAnalysisManager &FAM) {
-    LLVMContext &CTX = F.getContext();
     bool changed = false;
     std::vector<BinaryOperator *> freeList;
     for (auto &BB : F) {

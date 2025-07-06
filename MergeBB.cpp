@@ -8,7 +8,7 @@ using namespace llvm;
 namespace {
 bool canRemoveInst(const Instruction *inst) {
   const Instruction *user = dyn_cast<Instruction>(*inst->user_begin());
-  BasicBlock *succ = inst->getParent()->getTerminator()->getSuccessor(0);
+  const BasicBlock *succ = inst->getParent()->getTerminator()->getSuccessor(0);
 
   const PHINode *phiUser;
   bool usedInPhi =
@@ -137,8 +137,8 @@ struct MergeBB : PassInfoMixin<MergeBB> {
       if (BB2 == &BB2->getParent()->getEntryBlock()) {
         continue;
       }
-      auto branchTerm = dyn_cast<BranchInst>(BB2->getTerminator());
-      if (!(branchTerm && branchTerm->isUnconditional())) {
+      auto branchTerm2 = dyn_cast<BranchInst>(BB2->getTerminator());
+      if (!(branchTerm2 && branchTerm2->isUnconditional())) {
         continue;
       }
       for (auto pred : predecessors(BB2)) {
@@ -165,11 +165,11 @@ struct MergeBB : PassInfoMixin<MergeBB> {
       }
 
       {
-        LockstepReverseIterator it(BB, BB2);
-        while (it.isValid() && identicalInstructions((*it)[0], (*it)[1])) {
-          --it;
+        LockstepReverseIterator it2(BB, BB2);
+        while (it2.isValid() && identicalInstructions((*it2)[0], (*it2)[1])) {
+          --it2;
         }
-        if (it.isValid()) {
+        if (it2.isValid()) {
           continue;
         }
 

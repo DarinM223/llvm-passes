@@ -43,7 +43,7 @@ class NumberExprAST : public ExprAST {
   double val_;
 
 public:
-  NumberExprAST(double val) : val_(val) {}
+  explicit NumberExprAST(double val) : val_(val) {}
   llvm::Value *codegen() override;
 };
 
@@ -53,7 +53,7 @@ class VariableExprAST : public ExprAST {
 
 public:
   const std::string &getName() { return name_; }
-  VariableExprAST(const std::string &name) : name_(name) {}
+  explicit VariableExprAST(const std::string &name) : name_(name) {}
   llvm::Value *codegen() override;
 };
 
@@ -164,7 +164,7 @@ class CodegenException : public std::exception {
   std::string reason_;
 
 public:
-  CodegenException(const std::string &reason) : reason_(reason) {}
+  explicit CodegenException(const std::string &reason) : reason_(reason) {}
   virtual const char *what() const throw() { return reason_.c_str(); }
 };
 

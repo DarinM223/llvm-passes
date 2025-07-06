@@ -15,7 +15,8 @@ class Parser {
 
 public:
   Parser(Lexer &lexer, std::unordered_map<char, int> binopPrecedence)
-      : lexer_(lexer), binopPrecedence_(std::move(binopPrecedence)) {}
+      : lexer_(lexer), currentToken_(0),
+        binopPrecedence_(std::move(binopPrecedence)) {}
   Token getCurrentToken() { return static_cast<Token>(currentToken_); }
   int getNextToken() {
     return currentToken_ = static_cast<int>(lexer_.getTok());
@@ -57,7 +58,7 @@ class ParserException : public std::exception {
   std::string reason_;
 
 public:
-  ParserException(const std::string &reason) : reason_(reason) {}
+  explicit ParserException(const std::string &reason) : reason_(reason) {}
   virtual const char *what() const throw() { return reason_.c_str(); }
 };
 

@@ -26,7 +26,7 @@ class Lexer {
   double numberValue_;
 
 public:
-  Lexer(std::istream &in) : in_(in), lastChar_(' ') {}
+  explicit Lexer(std::istream &in) : in_(in), lastChar_(' '), numberValue_(0) {}
   const std::string &getIdentifier() const { return identifier_; }
   double getNumber() const { return numberValue_; }
   Token getTok();

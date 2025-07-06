@@ -11,5 +11,5 @@ To run cppcheck:
 
 ```
 cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON .
-cppcheck --enable=all --suppress=missingInclude --suppress=missingIncludeSystem --project=compile_commands.json
+cppcheck --enable=all --suppress=missingInclude --suppress=missingIncludeSystem --suppress=useStlAlgorithm --project=compile_commands.json
 ```

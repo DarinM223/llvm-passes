@@ -209,7 +209,7 @@ Value *ForExprAST::codegen() {
   auto oldVal = NamedValues[varName_];
   NamedValues[varName_] = alloca;
 
-  auto body = body_->codegen();
+  body_->codegen();
   auto step =
       step_ ? step_->codegen() : ConstantFP::get(*TheContext, APFloat(1.0));
   auto end = end_->codegen();
@@ -270,7 +270,7 @@ Function *PrototypeAST::codegen() {
 }
 
 Function *FunctionAST::codegen(std::unordered_map<char, int> &binopPrecedence) {
-  auto &proto = *prototype_;
+  const auto &proto = *prototype_;
   FunctionProtos[prototype_->getName()] = std::move(prototype_);
   auto fn = getFunction(proto.getName());
   if (!fn) {
@@ -299,9 +299,9 @@ Function *FunctionAST::codegen(std::unordered_map<char, int> &binopPrecedence) {
     TheBuilder->CreateRet(result);
     verifyFunction(*fn);
     TheFPM->run(*fn, *TheFAM);
-  } catch (CodegenException e) {
+  } catch (CodegenException &e) {
     fn->eraseFromParent();
-    throw e;
+    throw;
   }
   return fn;
 }

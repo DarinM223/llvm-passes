@@ -37,27 +37,29 @@ struct DuplicateBB : PassInfoMixin<DuplicateBB> {
                                              : checkValue);
       Instruction *thenTerm = nullptr, *elseTerm = nullptr;
       SplitBlockAndInsertIfThenElse(cond, splitAt, &thenTerm, &elseTerm);
-      // At this point the blocks look like this:
-      //
-      //          +-------------------------+
-      //          | if-then-else (new)      |
-      //          | has instrs before split |
-      //          +-------------------------+
-      //          /                      \
-      //    +----------+            +------------+
-      //    | if (new) |            | else (new) |
-      //    +----------+            +------------+
-      //          \                      /
-      //           \                    /
-      //          +------------------------+
-      //          | tail (original block)  |
-      //          | has instrs after split |
-      //          +------------------------+
-      //
-      // thenTerm is the terminator to the if block, elseTerm is the
-      // terminator to the else block. To get the tail its
-      // thenTerm->successor(0), to get the if-then-else block its the
-      // thenTerm->getParent()->getSinglePredecessor().
+      /*
+       * At this point the blocks look like this:
+       *
+       *          +-------------------------+
+       *          | if-then-else (new)      |
+       *          | has instrs before split |
+       *          +-------------------------+
+       *          /                      \
+       *    +----------+            +------------+
+       *    | if (new) |            | else (new) |
+       *    +----------+            +------------+
+       *          \                      /
+       *           \                    /
+       *          +------------------------+
+       *          | tail (original block)  |
+       *          | has instrs after split |
+       *          +------------------------+
+       *
+       * thenTerm is the terminator to the if block, elseTerm is the
+       * terminator to the else block. To get the tail its
+       * thenTerm->successor(0), to get the if-then-else block its the
+       * thenTerm->getParent()->getSinglePredecessor().
+       */
       auto TailBlock = thenTerm->getSuccessor(0);
 
       std::vector<Instruction *> freeList;

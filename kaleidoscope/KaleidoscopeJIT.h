@@ -44,9 +44,10 @@ private:
   JITDylib &MainJD;
 
 public:
-  KaleidoscopeJIT(std::unique_ptr<ExecutionSession> ES,
+  KaleidoscopeJIT(std::unique_ptr<ExecutionSession> ExecSession,
                   JITTargetMachineBuilder JTMB, DataLayout DL)
-      : ES(std::move(ES)), DL(std::move(DL)), Mangle(*this->ES, this->DL),
+      : ES(std::move(ExecSession)), DL(std::move(DL)),
+        Mangle(*this->ES, this->DL),
         ObjectLayer(*this->ES,
                     []() { return std::make_unique<SectionMemoryManager>(); }),
         CompileLayer(*this->ES, ObjectLayer,
@@ -84,7 +85,7 @@ public:
                                              std::move(*DL));
   }
 
-  const DataLayout &getDataLayout() const { return DL; }
+  const DataLayout &getDataLayout() const { return this->DL; }
 
   JITDylib &getMainJITDylib() { return MainJD; }
 

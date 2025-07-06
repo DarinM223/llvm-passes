@@ -8,7 +8,7 @@ find_package(LLVM CONFIG)
 include_directories(SYSTEM ${LLVM_INCLUDE_DIRS})
 
 set(CMAKE_CXX_STANDARD 20 CACHE STRING "")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -fsanitize=address")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Werror -g")
 
 if (NOT LLVM_ENABLE_RTTI)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti")
@@ -44,7 +44,10 @@ add_library(MergeBB SHARED MergeBB.cpp)
 add_library(FindFCmpEq SHARED FindFCmpEq.cpp)
 add_library(ConvertFCmpEq SHARED ConvertFCmpEq.cpp)
 
+target_compile_options(kaleidoscope-exe PRIVATE -fsanitize=address)
+target_link_options(kaleidoscope-exe PRIVATE -fsanitize=address)
 target_link_libraries(kaleidoscope-exe PRIVATE LLVM)
 target_compile_features(kaleidoscope-exe PUBLIC cxx_std_20)
+
 target_compile_features(DuplicateBB PUBLIC cxx_std_20)
 target_compile_features(MergeBB PUBLIC cxx_std_20)
