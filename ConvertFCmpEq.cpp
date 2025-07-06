@@ -29,7 +29,7 @@ bool convertFCmpEq(FCmpInst *fcmp) noexcept {
   LLVMContext &CTX = fcmp->getModule()->getContext();
   auto I64Ty = IntegerType::get(CTX, 64);
   auto DoubleTy = Type::getDoubleTy(CTX);
-  auto SignMask = ConstantInt::get(I64Ty, ~(1L << 63));
+  auto SignMask = ConstantInt::get(I64Ty, ~(1UL << 63));
   APInt EpsilonBits(64, 0x3CB0000000000000);
   auto EpsilonValue = ConstantFP::get(DoubleTy, EpsilonBits.bitsToDouble());
 
